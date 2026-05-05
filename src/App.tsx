@@ -64,6 +64,19 @@ const SNAKE_STYLES = [
   { id: 'PILL', name: 'Cyber Pill', radius: 'rounded-full', scale: 0.8 },
 ];
 
+const SNAKE_PATTERNS = [
+  { id: 'NONE', name: 'Solid' },
+  { id: 'STRIPES', name: 'Stripes' },
+  { id: 'DOTS', name: 'Digital' },
+  { id: 'GLITCH', name: 'Glitch' },
+];
+
+const SNAKE_TRAILS = [
+  { id: 'NONE', name: 'Standard' },
+  { id: 'GHOST', name: 'Spectral' },
+  { id: 'GLOW', name: 'Overdrive' },
+];
+
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Difficulty = 'EASY' | 'NORMAL' | 'HARD';
 type GameStatus = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER' | 'WIN';
@@ -134,7 +147,9 @@ export default function App() {
     showGlow: true,
     glowIntensity: 0.5,
     snakeColor: 'CYAN',
-    snakeStyle: 'ROUNDED'
+    snakeStyle: 'ROUNDED',
+    snakePattern: 'NONE',
+    snakeTrail: 'NONE'
   });
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
@@ -217,7 +232,7 @@ export default function App() {
     const savedSettings = localStorage.getItem('neon-snake-settings');
     if (savedSettings) {
       const parsed = JSON.parse(savedSettings);
-      setSettings(parsed);
+      setSettings(prev => ({ ...prev, ...parsed }));
       audioService.setSfxVolume(parsed.sfxVolume);
       audioService.setMusicVolume(parsed.musicVolume);
       if (parsed.musicEnabled !== undefined) audioService.setMusicEnabled(parsed.musicEnabled);
@@ -228,6 +243,25 @@ export default function App() {
   // Update Settings in LocalStorage
   useEffect(() => {
     localStorage.setItem('neon-snake-settings', JSON.stringify(settings));
+  }, [settings]);
+
+  // Initial Audio Setup on User Interaction
+  useEffect(() => {
+    const handleFirstInteraction = async () => {
+      try {
+        await audioService.init();
+        // Sync potential volume changes from settings that were loaded in another useEffect
+        audioService.setSfxVolume(settings.sfxVolume);
+        audioService.setMusicVolume(settings.musicVolume);
+        audioService.setSfxEnabled(settings.sfxEnabled);
+        audioService.setMusicEnabled(settings.musicEnabled);
+      } catch (e) {
+        console.error("Audio initialization failed:", e);
+      }
+      window.removeEventListener('pointerdown', handleFirstInteraction);
+    };
+    window.addEventListener('pointerdown', handleFirstInteraction);
+    return () => window.removeEventListener('pointerdown', handleFirstInteraction);
   }, [settings]);
 
   const unlockAchievement = useCallback((id: string) => {
@@ -550,8 +584,55 @@ export default function App() {
     }
   };
 
+  // Touch Control State
+  const touchStart = useRef<{ x: number, y: number } | null>(null);
+  const minSwipeDistance = 30;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart.current || status !== 'PLAYING') return;
+
+    const touchEnd = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
+
+    const dx = touchEnd.x - touchStart.current.x;
+    const dy = touchEnd.y - touchStart.current.y;
+
+    // Detect if movement is enough to be a swipe
+    if (Math.abs(dx) > minSwipeDistance || Math.abs(dy) > minSwipeDistance) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal swipe
+        if (dx > 0 && nextDirection.current !== 'LEFT') nextDirection.current = 'RIGHT';
+        else if (dx < 0 && nextDirection.current !== 'RIGHT') nextDirection.current = 'LEFT';
+      } else {
+        // Vertical swipe
+        if (dy > 0 && nextDirection.current !== 'UP') nextDirection.current = 'DOWN';
+        else if (dy < 0 && nextDirection.current !== 'DOWN') nextDirection.current = 'UP';
+      }
+      // Reset touch start to prevent multiple direction changes in one swipe
+      touchStart.current = touchEnd;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStart.current = null;
+  };
+
   return (
-    <div className="min-h-[100dvh] bg-[#050505] text-white font-sans flex flex-col items-center justify-start md:justify-center p-4 md:p-8 selection:bg-cyan-500/30 overflow-x-hidden">
+    <div 
+      className="min-h-[100dvh] bg-[#050505] text-white font-sans flex flex-col items-center justify-start md:justify-center p-4 md:p-8 selection:bg-cyan-500/30 overflow-x-hidden touch-none"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="scanlines" />
       {/* Background Glow */}
       <AnimatePresence>
@@ -645,6 +726,22 @@ export default function App() {
           {snake.map((segment, i) => {
             const colorOption = SNAKE_COLORS.find(c => c.name === settings.snakeColor) || SNAKE_COLORS[0];
             const styleOption = SNAKE_STYLES.find(s => s.id === settings.snakeStyle) || SNAKE_STYLES[1];
+            
+            // Pattern Logic
+            let patternStyle = {};
+            if (settings.snakePattern === 'STRIPES') {
+              patternStyle = { backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)` };
+            } else if (settings.snakePattern === 'DOTS') {
+              patternStyle = { backgroundImage: `radial-gradient(rgba(0,0,0,0.15) 1px, transparent 0)`, backgroundSize: '4px 4px' };
+            } else if (settings.snakePattern === 'GLITCH') {
+              patternStyle = { backgroundImage: `linear-gradient(0deg, transparent 50%, rgba(255,255,255,0.05) 50%)`, backgroundSize: '100% 2px' };
+            }
+
+            // Trail Logic
+            const isSpectral = settings.snakeTrail === 'GHOST';
+            const isOverdrive = settings.snakeTrail === 'GLOW';
+            const opacity = isSpectral ? Math.max(0.2, 1 - (i / (snake.length > 5 ? snake.length : 10))) : 1;
+            
             return (
               <motion.div
                 key={`${i}-${segment.x}-${segment.y}`}
@@ -692,9 +789,14 @@ export default function App() {
                       ? (i === 0 ? 'bg-fuchsia-400 shadow-[0_0_15px_#d946ef] z-20' : 'bg-fuchsia-600/80 z-10')
                       : activeEffect === 'DISCO'
                         ? (i % 2 === 0 ? 'bg-fuchsia-400 shadow-[0_0_15px_#d946ef] z-20' : 'bg-cyan-400 shadow-[0_0_15px_#22d3ee] z-20')
-                        : (i === 0 ? `${colorOption.class} ${colorOption.shadow} z-20` : `${colorOption.tailClass} z-10`)
+                        : (i === 0 ? `${colorOption.class} ${colorOption.shadow} z-20 ${isOverdrive ? 'shadow-[0_0_25px_white]' : ''}` : `${colorOption.tailClass} z-10 ${isOverdrive ? 'shadow-[0_0_10px_white/50]' : ''}`)
                 }`}
-                style={{ top: 0, left: 0 }}
+                style={{ 
+                  top: 0, 
+                  left: 0, 
+                  ...patternStyle,
+                  opacity
+                }}
               />
             );
           })}
@@ -1395,6 +1497,52 @@ export default function App() {
                           }`}
                         >
                           {style.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Snake Pattern */}
+                  <div className="flex flex-col gap-4 pt-4 border-t border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">Surface Pattern</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Aesthetics Overdrive</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {SNAKE_PATTERNS.map(pattern => (
+                        <button
+                          key={pattern.id}
+                          onClick={() => setSettings(s => ({ ...s, snakePattern: pattern.id }))}
+                          className={`py-3 px-1 min-h-[44px] rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
+                            settings.snakePattern === pattern.id 
+                              ? 'bg-amber-500 border-white text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                              : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10'
+                          }`}
+                        >
+                          {pattern.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Snake Trail */}
+                  <div className="flex flex-col gap-4 pt-4 border-t border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">Trace Effect</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Kinetic Visualization</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {SNAKE_TRAILS.map(trail => (
+                        <button
+                          key={trail.id}
+                          onClick={() => setSettings(s => ({ ...s, snakeTrail: trail.id }))}
+                          className={`py-3 px-1 min-h-[44px] rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
+                            settings.snakeTrail === trail.id 
+                              ? 'bg-fuchsia-500 border-white text-black shadow-[0_0_15px_rgba(217,70,239,0.4)]' 
+                              : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10'
+                          }`}
+                        >
+                          {trail.name}
                         </button>
                       ))}
                     </div>
