@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://snake-game-xi-mauve.vercel.app/sitemap.xml
+Sitemap: https://ais-pre-fjjatl5zwtmum5wj4hlipu-334045650523.asia-southeast1.run.app/sitemap.xml
