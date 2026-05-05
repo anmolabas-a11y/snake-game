@@ -77,6 +77,12 @@ const SNAKE_TRAILS = [
   { id: 'GLOW', name: 'Overdrive' },
 ];
 
+const GlitchText = ({ text, className = "" }: { text: string, className?: string }) => (
+  <span className={`glitch relative inline-block ${className}`} data-text={text}>
+    {text}
+  </span>
+);
+
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Difficulty = 'EASY' | 'NORMAL' | 'HARD';
 type GameStatus = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER' | 'WIN';
@@ -634,6 +640,7 @@ export default function App() {
       onTouchEnd={handleTouchEnd}
     >
       <div className="scanlines" />
+      <div className="noise-overlay" />
       {/* Background Glow */}
       <AnimatePresence>
         {settings.showGlow && (
@@ -667,11 +674,15 @@ export default function App() {
         {/* Header HUD */}
         <div className="flex items-center justify-between bg-white/5 border border-white/10 backdrop-blur-xl p-4 rounded-2xl shadow-2xl">
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Node_ID: 01</span>
+            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-cyan-500 animate-pulse" />
+              SYSTEM_STATUS: ACTIVE
+            </span>
             <div className="flex items-center gap-2">
-              <span className={`text-xl md:text-2xl font-mono font-bold tabular-nums transition-colors ${activeEffect === 'DOUBLE_POINTS' ? 'text-fuchsia-400' : 'text-cyan-400'}`}>
-                {score.toString().padStart(4, '0')}
-              </span>
+              <GlitchText 
+                text={score.toString().padStart(4, '0')} 
+                className={`text-xl md:text-2xl font-mono font-bold tabular-nums ${activeEffect === 'DOUBLE_POINTS' ? 'text-fuchsia-400' : 'text-cyan-400'}`} 
+              />
               {activeEffect === 'DOUBLE_POINTS' && (
                 <motion.span 
                   animate={{ scale: [1, 1.2, 1] }} 
@@ -902,16 +913,27 @@ export default function App() {
               >
                 {status === 'MENU' && (
                   <motion.div 
-                    initial={{ scale: 0.9, y: 20 }}
-                    animate={{ scale: 1, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
                     className="flex flex-col items-center w-full max-h-[85vh] overflow-hidden"
                   >
-                    <h1 className="text-4xl font-black italic tracking-tighter mb-6 flex items-center gap-3 shrink-0">
-                      NEON <span className="text-cyan-400">SNAKE</span>
-                    </h1>
+                    <motion.h1 
+                      initial={{ scale: 0.5, opacity: 0, filter: 'blur(20px)' }}
+                      animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }}
+                      transition={{ delay: 0.2, duration: 0.8, type: 'spring' }}
+                      className="text-4xl md:text-5xl font-black italic tracking-tighter mb-8 flex items-center gap-3 shrink-0"
+                    >
+                      <GlitchText text="NEON" /> <span className="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]">SNAKE</span>
+                    </motion.h1>
 
                     {/* Menu Tabs */}
-                    <div className="flex w-full gap-2 p-1 bg-white/5 border border-white/10 rounded-xl mb-6 shrink-0">
+                    <motion.div 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="flex w-full gap-2 p-1 bg-white/5 border border-white/10 rounded-xl mb-6 shrink-0 shadow-inner"
+                    >
                       <button 
                         onClick={() => setMenuTab('PLAY')}
                         className={`flex-1 py-3 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition-colors ${menuTab === 'PLAY' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -930,10 +952,15 @@ export default function App() {
                       >
                         GEAR
                       </button>
-                    </div>
+                    </motion.div>
                     
                     <div className="w-full flex-1 overflow-y-auto custom-scrollbar pr-1">
-                      {menuTab === 'PLAY' ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        {menuTab === 'PLAY' ? (
                         <div className="flex flex-col gap-6">
                           <div className="flex flex-col gap-3">
                             <div className="flex items-center justify-between ml-1">
@@ -1032,14 +1059,20 @@ export default function App() {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-2">
-                          {ACHIEVEMENTS.map(ach => {
+                          {ACHIEVEMENTS.map((ach, idx) => {
                             const isUnlocked = unlockedAchievements.includes(ach.id);
                             return (
-                              <div key={ach.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
-                                isUnlocked 
-                                  ? 'bg-cyan-500/10 border-cyan-500/30' 
-                                  : 'bg-white/5 border-white/10 opacity-60 grayscale'
-                              }`}>
+                              <motion.div 
+                                key={ach.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.1 + idx * 0.05 }}
+                                className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                                  isUnlocked 
+                                    ? 'bg-cyan-500/10 border-cyan-500/30' 
+                                    : 'bg-white/5 border-white/10 opacity-60 grayscale'
+                                }`}
+                              >
                                 <div className={`p-2 rounded-lg ${isUnlocked ? 'bg-cyan-400 text-black' : 'bg-white/10 text-zinc-500'}`}>
                                   {ach.icon}
                                 </div>
@@ -1054,12 +1087,13 @@ export default function App() {
                                     <CheckCircle2 className="w-4 h-4 text-cyan-400" />
                                   </div>
                                 )}
-                              </div>
+                              </motion.div>
                             );
                           })}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
+                  </div>
 
                     {/* Game Tip Display */}
                     <div className="mt-4 border-t border-white/5 pt-4 pb-2">
@@ -1108,11 +1142,13 @@ export default function App() {
                       transition: { staggerChildren: 0.1, delayChildren: 0.1 }
                     }
                   }}
-                  className="flex flex-col items-center text-center w-full"
+                  className="flex flex-col items-center text-center w-full relative crt-warp p-4 rounded-3xl"
                 >
+                  <div className="scanline-artifact" />
+                  
                   <motion.div
                     variants={{
-                      hidden: { scale: 2, opacity: 0, filter: 'blur(15px)' },
+                      hidden: { scale: 2, opacity: 0, filter: 'blur(20px)' },
                       visible: { 
                         scale: 1, 
                         opacity: 1, 
@@ -1120,29 +1156,31 @@ export default function App() {
                         transition: { type: 'spring', damping: 15, stiffness: 100 }
                       }
                     }}
-                    className="relative mb-2"
+                    className="relative mb-2 game-over-glitch"
                   >
                     {/* Glitch Effect layers */}
-                    <motion.h2 
-                      animate={{ 
-                        x: [0, -2, 2, -1, 0],
-                        opacity: [1, 0.8, 1, 0.9, 1]
-                      }}
-                      transition={{ repeat: Infinity, duration: 0.2, repeatDelay: 3 }}
-                      className="text-5xl md:text-6xl font-black text-rose-500 italic tracking-tighter drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]"
-                    >
-                      GAME OVER
-                    </motion.h2>
-                    <motion.div 
-                      animate={{ 
-                        opacity: [0, 0.5, 0],
-                        x: [-5, 5, -5]
-                      }}
-                      transition={{ repeat: Infinity, duration: 0.1, repeatDelay: 2 }}
-                      className="absolute inset-0 text-cyan-400 font-black text-5xl md:text-6xl italic tracking-tighter mix-blend-screen overflow-hidden pointer-events-none"
-                    >
-                      GAME OVER
-                    </motion.div>
+                      <motion.h2 
+                        animate={{ 
+                          x: [0, -3, 3, -2, 0],
+                          opacity: [1, 0.7, 1, 0.8, 1],
+                          scale: [1, 1.05, 0.95, 1]
+                        }}
+                        transition={{ repeat: Infinity, duration: 0.15, repeatDelay: 1.5 }}
+                        className="text-5xl md:text-7xl font-black text-rose-500 italic tracking-tighter drop-shadow-[0_0_30px_rgba(244,63,94,0.8)]"
+                      >
+                        <GlitchText text="GAME OVER" />
+                      </motion.h2>
+                      <motion.div 
+                        animate={{ 
+                          opacity: [0, 0.8, 0],
+                          x: [-10, 10, -10],
+                          skewY: [0, 5, -5, 0]
+                        }}
+                        transition={{ repeat: Infinity, duration: 0.1, repeatDelay: 1 }}
+                        className="absolute inset-0 text-cyan-400 font-black text-5xl md:text-7xl italic tracking-tighter mix-blend-screen overflow-hidden pointer-events-none opacity-50"
+                      >
+                        <GlitchText text="GAME OVER" />
+                      </motion.div>
                   </motion.div>
                   
                   <motion.div 
@@ -1152,9 +1190,9 @@ export default function App() {
                     }}
                     className="flex flex-col items-center gap-1 mb-8"
                   >
-                    <div className="h-[2px] w-12 bg-rose-500/30 rounded-full" />
-                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] font-mono">
-                      Neural Link: <span className="text-rose-400">DISCONNECTED</span>
+                    <div className="h-[2px] w-16 bg-rose-500/50 rounded-full animate-pulse" />
+                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.4em] font-mono">
+                      Neural Link: <span className="text-rose-400 animate-pulse">TERMINATED</span>
                     </p>
                   </motion.div>
                   
@@ -1168,7 +1206,7 @@ export default function App() {
                         transition: { type: 'spring', damping: 20, stiffness: 200 }
                       }
                     }}
-                    className="bg-zinc-950/80 border border-white/10 p-8 md:p-10 rounded-[2.5rem] w-full mb-8 relative group shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+                    className="bg-zinc-950/90 border border-white/20 p-8 md:p-10 rounded-[2.5rem] w-full mb-8 relative group shadow-[0_0_80px_rgba(244,63,94,0.15)] chromatic-box"
                   >
                     {/* Background decorative elements */}
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -1343,12 +1381,30 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6"
             >
-            <motion.div 
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="bg-zinc-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl flex flex-col max-h-[90dvh]"
+              <motion.div 
+                initial={{ 
+                  clipPath: 'polygon(0 45%, 100% 45%, 100% 55%, 0 55%)',
+                  opacity: 0,
+                  scale: 1.1
+                }}
+                animate={{ 
+                  clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                  opacity: 1,
+                  scale: 1
+                }}
+                exit={{ 
+                  clipPath: 'polygon(0 45%, 100% 45%, 100% 55%, 0 55%)',
+                  opacity: 0,
+                  scale: 0.95
+                }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-[0_0_50px_rgba(34,211,238,0.15)] flex flex-col max-h-[90dvh] relative overflow-hidden"
               >
+                {/* Decorative border elements */}
+                <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyan-500 m-4" />
+                <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyan-500 m-4" />
+                <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyan-500 m-4" />
+                <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyan-500 m-4" />
                 <div className="flex items-center gap-3 mb-6 shrink-0">
                   <div className="p-2 bg-cyan-500/20 rounded-lg">
                     <Settings className="w-5 h-5 text-cyan-400" />
