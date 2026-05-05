@@ -256,7 +256,7 @@ export default function App() {
     const handleFirstInteraction = async () => {
       try {
         await audioService.init();
-        // Sync potential volume changes from settings that were loaded in another useEffect
+        // Sync volume after init
         audioService.setSfxVolume(settings.sfxVolume);
         audioService.setMusicVolume(settings.musicVolume);
         audioService.setSfxEnabled(settings.sfxEnabled);
@@ -268,7 +268,7 @@ export default function App() {
     };
     window.addEventListener('pointerdown', handleFirstInteraction);
     return () => window.removeEventListener('pointerdown', handleFirstInteraction);
-  }, [settings]);
+  }, []); // Only runs once on mount
 
   const unlockAchievement = useCallback((id: string) => {
     setUnlockedAchievements(prev => {
@@ -697,12 +697,14 @@ export default function App() {
           
           <div className="flex items-center gap-3">
             {(status === 'PLAYING' || status === 'PAUSED') && (
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => status === 'PLAYING' ? setStatus('PAUSED') : setStatus('PLAYING')}
-                className="p-3 rounded-xl bg-white/5 border border-white/10 active:scale-95 transition-transform"
+                className="p-3 rounded-xl bg-white/5 border border-white/10 transition-colors"
               >
-                {status === 'PLAYING' ? <Pause className="w-5 h-5 text-zinc-400" /> : <Play className="w-5 h-5 text-cyan-400" />}
-              </button>
+                {status === 'PLAYING' ? <Pause className="w-5 h-5 text-zinc-400 group-hover:text-white" /> : <Play className="w-5 h-5 text-cyan-400" />}
+              </motion.button>
             )}
             
             <div className="flex flex-col items-end text-right">
@@ -934,24 +936,30 @@ export default function App() {
                       transition={{ delay: 0.4 }}
                       className="flex w-full gap-2 p-1 bg-white/5 border border-white/10 rounded-xl mb-6 shrink-0 shadow-inner"
                     >
-                      <button 
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setMenuTab('PLAY')}
                         className={`flex-1 py-3 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition-colors ${menuTab === 'PLAY' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                       >
                         PLAY
-                      </button>
-                      <button 
+                      </motion.button>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setMenuTab('SCORES')}
                         className={`flex-1 py-3 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition-colors ${menuTab === 'SCORES' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                       >
                         GLOBAL
-                      </button>
-                      <button 
+                      </motion.button>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setMenuTab('ACHIEVEMENTS')}
                         className={`flex-1 py-3 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition-colors ${menuTab === 'ACHIEVEMENTS' ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                       >
                         GEAR
-                      </button>
+                      </motion.button>
                     </motion.div>
                     
                     <div className="w-full flex-1 overflow-y-auto custom-scrollbar pr-1">
@@ -973,9 +981,11 @@ export default function App() {
                               {(['EASY', 'NORMAL', 'HARD'] as Difficulty[]).map(d => {
                                 const isSelected = difficulty === d;
                                 return (
-                                  <button
+                                  <motion.button
                                     key={d}
                                     id={`btn-difficulty-${d.toLowerCase()}`}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
                                     onClick={() => setDifficulty(d)}
                                     className="relative py-4 md:py-3 px-4 rounded-xl text-xs font-bold transition-colors z-10 overflow-hidden group min-h-[44px]"
                                   >
@@ -987,27 +997,31 @@ export default function App() {
                                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                                       />
                                     )}
-                                  </button>
+                                  </motion.button>
                                 );
                               })}
                             </div>
                           </div>
 
                           <div className="flex gap-2">
-                            <button
+                            <motion.button
                               id="btn-start"
+                              whileHover={{ scale: 1.02, backgroundColor: '#f0f0f0' }}
+                              whileTap={{ scale: 0.98 }}
                               onClick={startGame}
-                              className="flex-[2] bg-white text-black py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                              className="flex-[2] bg-white text-black py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                             >
                               <Play className="w-5 h-5 fill-current" /> START GAME
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                               id="btn-open-settings"
+                              whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => setShowSettings(true)}
-                              className="flex-1 bg-white/5 border border-white/10 text-white rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors"
+                              className="flex-1 bg-white/5 border border-white/10 text-white rounded-xl flex items-center justify-center transition-colors"
                             >
                               <Settings className="w-6 h-6" />
-                            </button>
+                            </motion.button>
                           </div>
                         </div>
                       ) : menuTab === 'SCORES' ? (
@@ -1015,8 +1029,10 @@ export default function App() {
                           {/* Leaderboard Filters */}
                           <div className="flex gap-1 p-1 bg-white/5 rounded-lg border border-white/10 shrink-0">
                             {(['ALL', 'EASY', 'NORMAL', 'HARD'] as const).map(d => (
-                              <button
+                              <motion.button
                                 key={d}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => setLeaderboardDifficulty(d)}
                                 className={`flex-1 py-3 md:py-1.5 rounded-md text-[9px] font-black tracking-widest transition-all ${
                                   leaderboardDifficulty === d 
@@ -1025,7 +1041,7 @@ export default function App() {
                                 }`}
                               >
                                 {d}
-                              </button>
+                              </motion.button>
                             ))}
                           </div>
 
@@ -1118,18 +1134,24 @@ export default function App() {
                 )}
 
                 {status === 'PAUSED' && (
-                  <motion.div className="flex flex-col items-center">
-                    <Pause className="w-20 h-20 text-cyan-400 mb-6" />
-                    <h2 className="text-3xl font-bold mb-8">GAME PAUSED</h2>
-                    <button
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center"
+                  >
+                    <Pause className="w-20 h-20 text-cyan-400 mb-6 drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]" />
+                    <h2 className="text-3xl font-black italic mb-8 tracking-[0.2em]">PAUSE_MODE</h2>
+                    <motion.button
                       id="btn-resume"
+                      whileHover={{ scale: 1.05, shadow: '0 0 30px rgba(255,255,255,0.2)' }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setStatus('PLAYING')}
-                      className="bg-white text-black px-12 py-4 rounded-xl font-bold text-lg"
+                      className="bg-white text-black px-12 py-4 rounded-xl font-bold text-lg transition-transform"
                     >
-                      RESUME
-                  </button>
-                </motion.div>
-              )}
+                      RESUME_SYNC
+                    </motion.button>
+                  </motion.div>
+                )}
 
               {status === 'GAMEOVER' && (
                 <motion.div 
@@ -1265,14 +1287,16 @@ export default function App() {
                     className="w-full mb-8 border-t border-white/5 pt-6"
                   >
                     {!user ? (
-                      <button
+                      <motion.button
                         id="btn-login-to-save"
+                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={handleSignIn}
                         className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-3 transition-all group"
                       >
                         <UserIcon className="w-4 h-4 text-zinc-400 group-hover:text-cyan-400" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-white">Initialize Score Sync</span>
-                      </button>
+                      </motion.button>
                     ) : !hasSubmitted ? (
                       <div className="flex flex-col gap-4">
                         <label className="text-[9px] uppercase font-black text-zinc-500 text-left ml-1 tracking-[0.2em]">Broadcast to Leaderboard</label>
@@ -1283,20 +1307,22 @@ export default function App() {
                             placeholder="ID_IDENTIFIER"
                             value={playerName}
                             onChange={(e) => setPlayerName(e.target.value.slice(0, 16))}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm font-mono tracking-tighter focus:outline-none focus:border-cyan-400 focus:bg-white/[0.08] transition-all placeholder:text-zinc-700"
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm font-mono tracking-tighter focus:outline-none focus:border-cyan-400 focus:bg-white/[0.08] focus:ring-1 focus:ring-cyan-500/30 transition-all placeholder:text-zinc-700"
                           />
-                          <button
+                          <motion.button
                             id="btn-submit-score"
+                            whileHover={{ scale: 1.05, backgroundColor: '#22d3ee' }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={handleSubmitScore}
                             disabled={isSubmitting || !playerName}
-                            className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-20 disabled:grayscale transition-all text-black px-6 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.3)] min-h-[56px]"
+                            className="bg-cyan-500 disabled:opacity-20 disabled:grayscale transition-all text-black px-6 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.3)] min-h-[56px]"
                           >
                             {isSubmitting ? (
                               <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                             ) : (
                               <Send className="w-5 h-5" />
                             )}
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
                     ) : (
@@ -1332,39 +1358,49 @@ export default function App() {
                     }}
                     className="flex flex-col gap-3 w-full"
                   >
-                    <button
+                    <motion.button
                       id="btn-retry"
+                      whileHover={{ scale: 1.02, backgroundColor: '#ffffff' }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={startGame}
-                      className="w-full bg-white text-black py-5 md:py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-[0.98] min-h-[64px]"
+                      className="w-full bg-white text-black py-5 md:py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] min-h-[64px]"
                     >
                       <RotateCcw className="w-6 h-6" /> RELOAD SYSTEM
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       id="btn-menu"
+                      whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => setStatus('MENU')}
-                      className="w-full bg-white/5 border border-white/10 hover:bg-white/10 py-5 md:py-4 rounded-2xl font-bold tracking-widest text-zinc-400 hover:text-white transition-all active:scale-[0.98] min-h-[64px]"
+                      className="w-full bg-white/5 border border-white/10 py-5 md:py-4 rounded-2xl font-bold tracking-widest text-zinc-400 hover:text-white transition-all min-h-[64px]"
                     >
                       RETURN TO ROOT
-                    </button>
+                    </motion.button>
                   </motion.div>
                 </motion.div>
               )}
 
                 {status === 'WIN' && (
-                  <motion.div className="flex flex-col items-center text-center">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center text-center"
+                  >
                     <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_#eab308]">
                       <CheckCircle2 className="w-10 h-10 text-black" />
                     </div>
-                    <h2 className="text-4xl font-black text-yellow-500 mb-2 italic">VICTORY</h2>
+                    <h2 className="text-4xl font-black text-yellow-500 mb-2 italic tracking-tighter">VICTORY</h2>
                     <p className="text-zinc-400 mb-8 max-w-[200px]">You reached the master score of {WIN_SCORE}!</p>
                     
-                    <button
+                    <motion.button
                       id="btn-win-menu"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => setStatus('MENU')}
-                      className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg"
+                      className="w-full bg-white text-black py-4 rounded-xl font-black text-lg shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                     >
                       COLLECT GLORY
-                    </button>
+                    </motion.button>
                   </motion.div>
                 )}
               </motion.div>
@@ -1417,7 +1453,9 @@ export default function App() {
                   <div className="flex flex-col gap-3">
                     <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest text-zinc-500">
                       <span>Sound Effects</span>
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => {
                           const enabled = !settings.sfxEnabled;
                           setSettings(s => ({ ...s, sfxEnabled: enabled }));
@@ -1426,7 +1464,7 @@ export default function App() {
                         className={`px-2 py-0.5 rounded text-[8px] font-black tracking-tighter transition-colors ${settings.sfxEnabled ? 'bg-cyan-500 text-black' : 'bg-white/10 text-white'}`}
                       >
                         {settings.sfxEnabled ? 'ON' : 'OFF'}
-                      </button>
+                      </motion.button>
                     </div>
                     <input 
                       type="range" 
@@ -1448,7 +1486,9 @@ export default function App() {
                   <div className="flex flex-col gap-3">
                     <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest text-zinc-500">
                       <span>Background Music</span>
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => {
                           const enabled = !settings.musicEnabled;
                           setSettings(s => ({ ...s, musicEnabled: enabled }));
@@ -1457,7 +1497,7 @@ export default function App() {
                         className={`px-2 py-0.5 rounded text-[8px] font-black tracking-tighter transition-colors ${settings.musicEnabled ? 'bg-cyan-500 text-black' : 'bg-white/10 text-white'}`}
                       >
                         {settings.musicEnabled ? 'ON' : 'OFF'}
-                      </button>
+                      </motion.button>
                     </div>
                     <input 
                       type="range" 
@@ -1521,13 +1561,15 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-6 gap-3">
                       {SNAKE_COLORS.map(color => (
-                        <button
+                        <motion.button
                           key={color.name}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => setSettings(s => ({ ...s, snakeColor: color.name }))}
                           className={`aspect-square min-h-[44px] rounded-lg border-2 transition-all ${
                             settings.snakeColor === color.name 
-                              ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.4)]' 
-                              : 'border-transparent hover:scale-105'
+                              ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' 
+                              : 'border-transparent'
                           } ${color.class}`}
                           title={color.name}
                         />
@@ -1543,8 +1585,10 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       {SNAKE_STYLES.map(style => (
-                        <button
+                        <motion.button
                           key={style.id}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => setSettings(s => ({ ...s, snakeStyle: style.id }))}
                           className={`py-3 px-1 min-h-[44px] rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
                             settings.snakeStyle === style.id 
@@ -1553,7 +1597,7 @@ export default function App() {
                           }`}
                         >
                           {style.name}
-                        </button>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
@@ -1566,8 +1610,10 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       {SNAKE_PATTERNS.map(pattern => (
-                        <button
+                         <motion.button
                           key={pattern.id}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => setSettings(s => ({ ...s, snakePattern: pattern.id }))}
                           className={`py-3 px-1 min-h-[44px] rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
                             settings.snakePattern === pattern.id 
@@ -1576,7 +1622,7 @@ export default function App() {
                           }`}
                         >
                           {pattern.name}
-                        </button>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
@@ -1589,8 +1635,10 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       {SNAKE_TRAILS.map(trail => (
-                        <button
+                        <motion.button
                           key={trail.id}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => setSettings(s => ({ ...s, snakeTrail: trail.id }))}
                           className={`py-3 px-1 min-h-[44px] rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
                             settings.snakeTrail === trail.id 
@@ -1599,17 +1647,19 @@ export default function App() {
                           }`}
                         >
                           {trail.name}
-                        </button>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
 
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02, backgroundColor: '#f0f0f0' }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setShowSettings(false)}
-                    className="w-full bg-white text-black py-5 md:py-4 rounded-xl font-bold text-base md:text-lg mt-4 hover:scale-[1.02] transition-transform min-h-[56px]"
+                    className="w-full bg-white text-black py-5 md:py-4 rounded-xl font-black text-base md:text-lg mt-4 transition-all min-h-[56px] shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                   >
                     SAVE & CLOSE
-                  </button>
+                  </motion.button>
                 </div>
               </motion.div>
             </motion.div>

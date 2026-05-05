@@ -75,11 +75,15 @@ class AudioService {
     this.musicEnabled = enabled;
     this.updateVolumes();
     if (!enabled) {
-      this.musicParts.forEach(part => part.stop());
-      if (this.musicLoop) this.musicLoop.stop();
-    } else {
-      this.musicParts.forEach(part => part.start(0));
-      if (this.musicLoop && this.musicLoop.state === 'stopped') {
+      this.musicParts.forEach(part => {
+        if (part.state === 'started') part.stop();
+      });
+      if (this.musicLoop && this.musicLoop.state === 'started') this.musicLoop.stop();
+    } else if (this.initialized) {
+      this.musicParts.forEach(part => {
+        if (part.state !== 'started') part.start(0);
+      });
+      if (this.musicLoop && this.musicLoop.state !== 'started') {
         this.musicLoop.start(0);
       }
     }
@@ -137,9 +141,9 @@ class AudioService {
     // -- SEQUENCES & LOOPS --
     
     // Beat Loop (4/4)
+    let drumStep = 0;
     const drumLoop = new Tone.Loop(time => {
-      // Bar logic (16 steps)
-      const step = Math.floor(Tone.Transport.getTicksAtTime(time) / Tone.Transport.PPQ * 4) % 16;
+      const step = drumStep % 16;
       
       // Kick on 1 and 9
       if (step === 0 || step === 8) {
@@ -155,6 +159,7 @@ class AudioService {
       if (step % 2 === 0 || step === 15) {
         this.hihat?.triggerAttackRelease('32n', time, step % 4 === 0 ? 0.3 : 0.1);
       }
+      drumStep++;
     }, '16n');
 
     // Bass Loop (8th notes)

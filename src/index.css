@@ -176,11 +176,11 @@ body {
 }
 
 @keyframes game-over-shake {
-  0% { transform: translate(0, 0) scale(1); filter: hue-rotate(0deg) blur(0px); }
-  25% { transform: translate(4px, -2px) scale(1.02); filter: hue-rotate(15deg) blur(0.5px); }
-  50% { transform: translate(-4px, 3px) scale(0.98); filter: hue-rotate(-15deg) blur(0px); }
-  75% { transform: translate(2px, 2px) scale(1.04); filter: hue-rotate(5deg) blur(1px); }
-  100% { transform: translate(0, 0) scale(1); filter: hue-rotate(0deg) blur(0px); }
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(4px, -2px) scale(1.02); }
+  50% { transform: translate(-4px, 3px) scale(0.98); }
+  75% { transform: translate(2px, 2px) scale(1.04); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 .chromatic-box {
@@ -232,12 +232,13 @@ body {
   animation: scanline-artifact-anim 2s linear infinite;
   z-index: 10;
   pointer-events: none;
+  will-change: transform;
 }
 
 @keyframes scanline-artifact-anim {
-  0% { top: 0; opacity: 0; }
+  0% { transform: translateY(-100%); opacity: 0; }
   10% { opacity: 0.8; }
   90% { opacity: 0.8; }
-  100% { top: 100%; opacity: 0; }
+  100% { transform: translateY(1000px); opacity: 0; }
 }
 
