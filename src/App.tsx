@@ -13,6 +13,7 @@ import {
   Trophy, 
   Play, 
   RotateCcw, 
+  Shield,
   Settings, 
   Gamepad2, 
   Zap, 
@@ -86,7 +87,7 @@ const GlitchText = ({ text, className = "" }: { text: string, className?: string
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Difficulty = 'EASY' | 'NORMAL' | 'HARD';
 type GameStatus = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER' | 'WIN';
-type EffectType = 'NONE' | 'DOUBLE_POINTS' | 'INVINCIBLE' | 'DISCO';
+type EffectType = 'NONE' | 'DOUBLE_POINTS' | 'INVINCIBLE' | 'DISCO' | 'REVERSE' | 'SHIELD';
 
 interface Achievement {
   id: string;
@@ -100,6 +101,8 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: 'score-500', title: 'Neon Master', description: 'Reach 500 points', icon: <Trophy className="w-4 h-4" /> },
   { id: 'score-1000', title: 'Cyber Legend', description: 'Reach 1000 points', icon: <Trophy className="w-4 h-4" /> },
   { id: 'disco-mode', title: 'Disco Fever', description: 'Trigger Disco Mode', icon: <Zap className="w-4 h-4" /> },
+  { id: 'shield-master', title: 'Grid Cleaner', description: 'Clear the grid of obstacles', icon: <Zap className="w-4 h-4" /> },
+  { id: 'reverse-survivor', title: 'Mind Bouncer', description: 'Survive a Reverse Controls event', icon: <RotateCcw className="w-4 h-4" /> },
   { id: 'power-10', title: 'Power Tripping', description: 'Collect 10 power-ups in one run', icon: <Zap className="w-4 h-4" /> },
   { id: 'hard-mode', title: 'Hard Wired', description: 'Play on Hard difficulty', icon: <Gamepad2 className="w-4 h-4" /> },
 ];
@@ -123,6 +126,7 @@ export default function App() {
   // Game State
   const [snake, setSnake] = useState<Position[]>(INITIAL_SNAKE);
   const [food, setFood] = useState<Position>({ x: 5, y: 5 });
+  const [obstacles, setObstacles] = useState<Position[]>([]);
   const [powerUp, setPowerUp] = useState<PowerUp | null>(null);
   const [activeEffect, setActiveEffect] = useState<EffectType>('NONE');
   const [effectTimeRemaining, setEffectTimeRemaining] = useState(0);
@@ -330,21 +334,57 @@ export default function App() {
       const onSnake = currentSnake.some(
         segment => segment.x === newFood.x && segment.y === newFood.y
       );
-      if (!onSnake) break;
+      const onObstacle = obstacles.some(
+        o => o.x === newFood.x && o.y === newFood.y
+      );
+      if (!onSnake && !onObstacle) break;
     }
     return newFood;
-  }, []);
+  }, [obstacles]);
+
+  // Generate Obstacles
+  const spawnObstacles = useCallback((currentSnake: Position[], count: number) => {
+    setObstacles(prev => {
+      const newObstacles = [...prev];
+      for (let i = 0; i < count; i++) {
+        let newPos;
+        let attempts = 0;
+        while (attempts < 50) {
+          attempts++;
+          newPos = {
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE),
+          };
+          const onSnake = currentSnake.some(s => s.x === newPos.x && s.y === newPos.y);
+          const onFood = food.x === newPos.x && food.y === newPos.y;
+          const onObstacle = newObstacles.some(o => o.x === newPos.x && o.y === newPos.y);
+          
+          const distToHead = Math.abs(newPos.x - currentSnake[0].x) + Math.abs(newPos.y - currentSnake[0].y);
+          
+          if (!onSnake && !onFood && !onObstacle && distToHead > 3) {
+            newObstacles.push(newPos);
+            break;
+          }
+        }
+      }
+      return newObstacles;
+    });
+  }, [food]);
 
   // Generate Power-up
   const spawnPowerUp = useCallback((currentSnake: Position[]) => {
     const rand = Math.random();
-    if (rand > 0.2) return; // 20% overall chance
+    if (rand > 0.3) return; // 30% overall chance
 
     let type: EffectType = 'DOUBLE_POINTS';
     if (rand < 0.02) {
-      type = 'DISCO'; // Secret 2% rarity
-    } else if (rand < 0.1) {
+      type = 'DISCO';
+    } else if (rand < 0.08) {
       type = 'INVINCIBLE';
+    } else if (rand < 0.15) {
+      type = 'REVERSE';
+    } else if (rand < 0.22) {
+      type = 'SHIELD';
     }
 
     let newPos;
@@ -356,10 +396,13 @@ export default function App() {
       const onSnake = currentSnake.some(
         segment => segment.x === newPos.x && segment.y === newPos.y
       );
-      if (!onSnake) break;
+      const onObstacle = obstacles.some(
+        o => o.x === newPos.x && o.y === newPos.y
+      );
+      if (!onSnake && !onObstacle) break;
     }
     setPowerUp({ ...newPos, type });
-  }, []);
+  }, [obstacles]);
 
   // Handle Level Difficulty Scaling
   const currentSpeed = DIFFICULTY_CONFIG[difficulty].speed - Math.floor(score / 5);
@@ -398,8 +441,11 @@ export default function App() {
         }
       }
 
-      // Check Self Collision
-      if (activeEffect !== 'INVINCIBLE' && prevSnake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
+      // Check Self & Obstacle Collision
+      const isCollidingWithSelf = prevSnake.some(segment => segment.x === newHead.x && segment.y === newHead.y);
+      const isCollidingWithObstacle = obstacles.some(o => o.x === newHead.x && o.y === newHead.y);
+      
+      if (activeEffect !== 'INVINCIBLE' && (isCollidingWithSelf || isCollidingWithObstacle)) {
         setStatus('GAMEOVER');
         return prevSnake;
       }
@@ -419,6 +465,12 @@ export default function App() {
           if (newScore >= WIN_SCORE) setStatus('WIN');
           return newScore;
         });
+        
+        // Spawn obstacles every 3 items, up to a limit
+        if (score > 0 && Math.floor(score / 30) > Math.floor((score - points) / 30)) {
+           spawnObstacles(newSnake, difficulty === 'HARD' ? 2 : 1);
+        }
+
         setFood(generateFood(newSnake));
         spawnPowerUp(newSnake);
       } else if (powerUp && newHead.x === powerUp.x && newHead.y === powerUp.y) {
@@ -430,6 +482,12 @@ export default function App() {
           audioService.playInvincibility();
         } else if (powerUp.type === 'DOUBLE_POINTS') {
           audioService.playDoublePoints();
+        } else if (powerUp.type === 'REVERSE') {
+          audioService.playPowerUp();
+        } else if (powerUp.type === 'SHIELD') {
+          audioService.playPowerUp();
+          setObstacles([]); // Clear all obstacles
+          unlockAchievement('shield-master');
         } else {
           audioService.playPowerUp();
         }
@@ -442,12 +500,14 @@ export default function App() {
         // Show notification
         const msg = powerUp.type === 'INVINCIBLE' ? { text: 'INVINCIBILITY', color: 'text-amber-400' } :
                    powerUp.type === 'DOUBLE_POINTS' ? { text: 'DOUBLE POINTS', color: 'text-fuchsia-400' } :
+                   powerUp.type === 'REVERSE' ? { text: 'REVERSE CONTROLS!', color: 'text-rose-400' } :
+                   powerUp.type === 'SHIELD' ? { text: 'GRID PURIFIED', color: 'text-emerald-400' } :
                    { text: 'DISCO MODE!', color: 'text-cyan-400' };
         setPickupMessage(msg);
         setTimeout(() => setPickupMessage(null), 2000);
 
         setActiveEffect(powerUp.type);
-        setEffectTimeRemaining(powerUp.type === 'INVINCIBLE' ? 5 : 10);
+        setEffectTimeRemaining(powerUp.type === 'INVINCIBLE' ? 5 : powerUp.type === 'REVERSE' ? 8 : 10);
         setPowerUp(null);
         newSnake.pop(); 
       } else {
@@ -494,24 +554,29 @@ export default function App() {
       const gp = gamepads[0];
 
       if (gp) {
-        // D-Pad (Standard Mapping)
-        if (gp.buttons[12].pressed && nextDirection.current !== 'DOWN') nextDirection.current = 'UP';
-        if (gp.buttons[13].pressed && nextDirection.current !== 'UP') nextDirection.current = 'DOWN';
-        if (gp.buttons[14].pressed && nextDirection.current !== 'RIGHT') nextDirection.current = 'LEFT';
-        if (gp.buttons[15].pressed && nextDirection.current !== 'LEFT') nextDirection.current = 'RIGHT';
+        let up = gp.buttons[12].pressed || (gp.axes[1] < -threshold);
+        let down = gp.buttons[13].pressed || (gp.axes[1] > threshold);
+        let left = gp.buttons[14].pressed || (gp.axes[0] < -threshold);
+        let right = gp.buttons[15].pressed || (gp.axes[0] > threshold);
 
-        // Left Analog Stick
-        const xAxis = gp.axes[0];
-        const yAxis = gp.axes[1];
+        // Reverse Controls logic for Gamepad
+        if (activeEffect === 'REVERSE') {
+          const tempUp = up;
+          up = down;
+          down = tempUp;
+          const tempLeft = left;
+          left = right;
+          right = tempLeft;
+        }
 
-        if (yAxis < -threshold && nextDirection.current !== 'DOWN') nextDirection.current = 'UP';
-        if (yAxis > threshold && nextDirection.current !== 'UP') nextDirection.current = 'DOWN';
-        if (xAxis < -threshold && nextDirection.current !== 'RIGHT') nextDirection.current = 'LEFT';
-        if (xAxis > threshold && nextDirection.current !== 'LEFT') nextDirection.current = 'RIGHT';
+        if (up && nextDirection.current !== 'DOWN') nextDirection.current = 'UP';
+        if (down && nextDirection.current !== 'UP') nextDirection.current = 'DOWN';
+        if (left && nextDirection.current !== 'RIGHT') nextDirection.current = 'LEFT';
+        if (right && nextDirection.current !== 'LEFT') nextDirection.current = 'RIGHT';
 
-        // Pause/Start buttons
-        if (gp.buttons[9].pressed || gp.buttons[8].pressed) {
-           // Start/Select - can be used for pause
+        // Pause button
+        if (gp.buttons[9].pressed) {
+           // Can add pause toggle here if desired, but careful with rapid fire
         }
       }
       requestRef = requestAnimationFrame(updateGamepad);
@@ -519,22 +584,51 @@ export default function App() {
 
     requestRef = requestAnimationFrame(updateGamepad);
     return () => cancelAnimationFrame(requestRef);
-  }, [status]); // Re-bind if status changes just in case, though refs handle the logic
+  }, [status, activeEffect]);
 
   // Keyboard Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowUp': if (nextDirection.current !== 'DOWN') nextDirection.current = 'UP'; break;
-        case 'ArrowDown': if (nextDirection.current !== 'UP') nextDirection.current = 'DOWN'; break;
-        case 'ArrowLeft': if (nextDirection.current !== 'RIGHT') nextDirection.current = 'LEFT'; break;
-        case 'ArrowRight': if (nextDirection.current !== 'LEFT') nextDirection.current = 'RIGHT'; break;
-        case 'p': if (status === 'PLAYING') setStatus('PAUSED'); else if (status === 'PAUSED') setStatus('PLAYING'); break;
+      let key = e.key;
+      
+      // Reverse Controls logic
+      if (activeEffect === 'REVERSE') {
+        if (key === 'ArrowUp') key = 'ArrowDown';
+        else if (key === 'ArrowDown') key = 'ArrowUp';
+        else if (key === 'ArrowLeft') key = 'ArrowRight';
+        else if (key === 'ArrowRight') key = 'ArrowLeft';
+        else if (key === 'w') key = 's';
+        else if (key === 's') key = 'w';
+        else if (key === 'a') key = 'd';
+        else if (key === 'd') key = 'a';
+      }
+
+      switch (key) {
+        case 'ArrowUp':
+        case 'w':
+          if (nextDirection.current !== 'DOWN') nextDirection.current = 'UP';
+          break;
+        case 'ArrowDown':
+        case 's':
+          if (nextDirection.current !== 'UP') nextDirection.current = 'DOWN';
+          break;
+        case 'ArrowLeft':
+        case 'a':
+          if (nextDirection.current !== 'RIGHT') nextDirection.current = 'LEFT';
+          break;
+        case 'ArrowRight':
+        case 'd':
+          if (nextDirection.current !== 'LEFT') nextDirection.current = 'RIGHT';
+          break;
+        case 'p':
+          if (status === 'PLAYING') setStatus('PAUSED');
+          else if (status === 'PAUSED') setStatus('PLAYING');
+          break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status]);
+  }, [status, activeEffect]);
 
   // Audio Feedback for Status Changes
   useEffect(() => {
@@ -554,6 +648,7 @@ export default function App() {
     if (difficulty === 'HARD') unlockAchievement('hard-mode');
     setSnake(INITIAL_SNAKE);
     setScore(0);
+    setObstacles([]);
     setNewHighScoreAchieved(false);
     setShowHighScoreAlert(false);
     setSessionPowerUps(0);
@@ -825,6 +920,29 @@ export default function App() {
             }}
           />
 
+          {/* Obstacles / Mines */}
+          {obstacles.map((o, i) => (
+            <motion.div
+              key={`obs-${i}`}
+              initial={{ scale: 0, rotate: 45 }}
+              animate={{ 
+                scale: [1, 1.1, 1], 
+                rotate: [45, 135, 45],
+                opacity: [0.7, 1, 0.7]
+              }}
+              transition={{ repeat: Infinity, duration: 4, delay: i * 0.1 }}
+              className="absolute w-[5%] h-[5%] bg-rose-950 border border-rose-500/50 rounded-sm z-20 flex items-center justify-center overflow-hidden"
+              style={{
+                left: `${o.x * (100 / GRID_SIZE)}%`,
+                top: `${o.y * (100 / GRID_SIZE)}%`
+              }}
+            >
+               <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(244,63,94,0.3)_0%,transparent_70%)] animate-pulse" />
+               <div className="absolute w-[1px] h-[80%] bg-rose-500/40 rotate-45" />
+               <div className="absolute w-[1px] h-[80%] bg-rose-500/40 -rotate-45" />
+            </motion.div>
+          ))}
+
           {/* Power Up */}
           {powerUp && (
             <motion.div
@@ -839,7 +957,11 @@ export default function App() {
                   ? 'bg-amber-500 border-amber-300 shadow-[0_0_20px_#f59e0b]' 
                   : powerUp.type === 'DISCO'
                     ? 'bg-white border-cyan-400 shadow-[0_0_30px_#ffffff]'
-                    : 'bg-fuchsia-400 border-fuchsia-200 shadow-[0_0_20px_#d946ef]'
+                    : powerUp.type === 'REVERSE'
+                      ? 'bg-rose-500 border-rose-200 shadow-[0_0_20px_#f43f5e]'
+                      : powerUp.type === 'SHIELD'
+                        ? 'bg-emerald-500 border-emerald-200 shadow-[0_0_20px_#10b981]'
+                        : 'bg-fuchsia-400 border-fuchsia-200 shadow-[0_0_20px_#d946ef]'
               }`}
               style={{
                 left: `${powerUp.x * (100 / GRID_SIZE)}%`,
@@ -851,6 +973,10 @@ export default function App() {
                   <Zap className="w-2 h-2 text-black fill-current" />
                 ) : powerUp.type === 'DISCO' ? (
                   <Trophy className="w-2 h-2 text-black animate-bounce" />
+                ) : powerUp.type === 'REVERSE' ? (
+                  <RotateCcw className="w-2 h-2 text-black" />
+                ) : powerUp.type === 'SHIELD' ? (
+                  <Shield className="w-2 h-2 text-black" />
                 ) : (
                   <span className="text-[6px] font-black text-black">2X</span>
                 )}
@@ -970,6 +1096,22 @@ export default function App() {
                       >
                         {menuTab === 'PLAY' ? (
                         <div className="flex flex-col gap-6">
+                          {/* High Score Display in Menu */}
+                          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                                <Trophy className="w-5 h-5 text-cyan-400" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Personal Record</span>
+                                <span className="text-xl font-mono font-black text-white italic">{highScore.toString().padStart(4, '0')}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter">Verified Local Sync</span>
+                            </div>
+                          </div>
+
                           <div className="flex flex-col gap-3">
                             <div className="flex items-center justify-between ml-1">
                               <label className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">Simulation Difficulty</label>
@@ -1307,7 +1449,7 @@ export default function App() {
                           <span className="text-xs text-white font-mono font-bold">{difficulty}</span>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Global Best</span>
+                          <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Personal Best</span>
                           <span className="text-xs text-cyan-400 font-mono font-bold">{highScore}</span>
                         </div>
                       </div>
